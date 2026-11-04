@@ -107,7 +107,12 @@ class GameEngine(
     }
 
     private fun createBotSerpent(name: String, skin: SkinTheme): Serpent {
-        val spawnPos = randomPointInWorld()
+        var spawnPos = randomPointInWorld()
+        var attempts = 0
+        while (attempts < 8 && GameMath.distance(spawnPos, player.head) < 220f) {
+            spawnPos = randomPointInWorld()
+            attempts++
+        }
         val randomAngle = Random.nextFloat() * GameMath.TWO_PI
         val bot = Serpent(
             id = "bot_${System.nanoTime()}_${Random.nextInt(1000)}",

@@ -1,0 +1,126 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50 &&
+             data.highScore is int && data.highScore >= 0 &&
+             (!('maxLength' in data) || data.maxLength is int) &&
+             (!('totalKills' in data) || data.totalKills is int) &&
+             (!('totalGames' in data) || data.totalGames is int) &&
+             (!('favoriteSkin' in data) || (data.favoriteSkin is string && data.favoriteSkin.size() <= 40)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidMatchRecord(data, userId) {
+      return data.recordId is string && data.recordId.size() <= 64 &&
+             data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.score is int && data.score >= 0 &&
+             data.maxLength is int && data.maxLength >= 0 &&
+             data.kills is int && data.kills >= 0 &&
+             data.survivalSeconds is int && data.survivalSeconds >= 0 &&
+             (!('skinName' in data) || (data.skinName is string && data.skinName.size() <= 40)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.scoreId is string && data.scoreId == request.auth.uid &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50 &&
+             data.score is int && data.score >= 0 &&
+             (!('maxLength' in data) || data.maxLength is int) &&
+             (!('kills' in data) || data.kills is int) &&
+             (!('skinName' in data) || (data.skinName is string && data.skinName.size() <= 40)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == userId &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'highScore', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'highScore', 'maxLength', 'totalKills', 'totalGames', 'favoriteSkin', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'highScore', 'maxLength', 'totalKills', 'totalGames', 'favoriteSkin', 'updatedAt']);
+
+      allow delete: if isOwner(userId);
+
+      // Match History subcollection
+      match /records/{recordId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(recordId) &&
+                         incoming().recordId == recordId &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['recordId', 'userId', 'score', 'maxLength', 'kills', 'survivalSeconds', 'createdAt']) &&
+                         incoming().keys().hasOnly(['recordId', 'userId', 'score', 'maxLength', 'kills', 'survivalSeconds', 'skinName', 'createdAt']) &&
+                         isValidMatchRecord(incoming(), userId);
+
+        allow update: if false; // Match records are immutable
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Global Public Leaderboard (viewable by all signed in players)
+    match /leaderboard/{scoreId} {
+      allow get, list: if isSignedIn();
+
+      allow create: if isSignedIn() &&
+                       scoreId == request.auth.uid &&
+                       incoming().scoreId == scoreId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['scoreId', 'userId', 'displayName', 'score', 'createdAt']) &&
+                       incoming().keys().hasOnly(['scoreId', 'userId', 'displayName', 'score', 'maxLength', 'kills', 'skinName', 'createdAt', 'updatedAt']) &&
+                       isValidLeaderboardEntry(incoming());
+
+      allow update: if isSignedIn() &&
+                       scoreId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidLeaderboardEntry(incoming()) &&
+                       incoming().score >= existing().score &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'score', 'maxLength', 'kills', 'skinName', 'updatedAt']);
+
+      allow delete: if isSignedIn() && scoreId == request.auth.uid;
+    }
+  }
+}

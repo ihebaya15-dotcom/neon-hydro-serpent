@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents the authenticated player's profile and lifetime statistics.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique Google user ID of the player."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name."
+        },
+        "highScore": {
+          "type": "integer",
+          "description": "Highest score achieved by the player."
+        },
+        "maxLength": {
+          "type": "integer",
+          "description": "Maximum serpent length achieved."
+        },
+        "totalKills": {
+          "type": "integer",
+          "description": "Lifetime total prey serpents defeated."
+        },
+        "totalGames": {
+          "type": "integer",
+          "description": "Total number of games played."
+        },
+        "favoriteSkin": {
+          "type": "string",
+          "description": "Selected neon skin ID or name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated."
+        }
+      },
+      "required": ["userId", "displayName", "highScore", "createdAt"]
+    },
+    "MatchRecord": {
+      "title": "MatchRecord",
+      "description": "Represents an individual game run and its final results.",
+      "type": "object",
+      "properties": {
+        "recordId": {
+          "type": "string",
+          "description": "Unique ID of the match record."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Google user ID of the player who played this match."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Final score earned in the match."
+        },
+        "maxLength": {
+          "type": "integer",
+          "description": "Peak serpent length reached in the match."
+        },
+        "kills": {
+          "type": "integer",
+          "description": "Number of opponents defeated."
+        },
+        "survivalSeconds": {
+          "type": "integer",
+          "description": "Duration survived in seconds."
+        },
+        "skinName": {
+          "type": "string",
+          "description": "Name of the serpent skin used."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when match ended."
+        }
+      },
+      "required": ["recordId", "userId", "score", "maxLength", "kills", "survivalSeconds", "createdAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Global leaderboard entry allowing players to showcase their top scores.",
+      "type": "object",
+      "properties": {
+        "scoreId": {
+          "type": "string",
+          "description": "Unique ID of the leaderboard score entry (typically userId)."
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID of the record holder."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the player."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Top score value."
+        },
+        "maxLength": {
+          "type": "integer",
+          "description": "Maximum length attained in top match."
+        },
+        "kills": {
+          "type": "integer",
+          "description": "Kills made in top match."
+        },
+        "skinName": {
+          "type": "string",
+          "description": "Serpent skin used."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when score was logged."
+        }
+      },
+      "required": ["scoreId", "userId", "displayName", "score", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Player profile documents storing lifetime stats and favorite skin."
+    },
+    "/users/{userId}/records/{recordId}": {
+      "schema": "MatchRecord",
+      "description": "Individual match history runs for the player."
+    },
+    "/leaderboard/{scoreId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global high scores leaderboard visible to all authenticated players."
+    }
+  }
+}

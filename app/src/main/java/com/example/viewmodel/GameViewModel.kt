@@ -1,5 +1,6 @@
 package com.example.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Build
@@ -11,10 +12,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
 import com.example.data.GameRecord
 import com.example.data.ScoreRepository
+import com.example.firebase.AuthManager
+import com.example.firebase.CloudLeaderboardEntry
+import com.example.firebase.CloudScoreRepository
 import com.example.game.GameEngine
 import com.example.game.LeaderboardEntry
 import com.example.game.Serpent
 import com.example.game.SkinTheme
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +45,9 @@ data class MatchStats(
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ScoreRepository
+    val authManager: AuthManager = AuthManager(application)
+    val cloudRepository: CloudScoreRepository = CloudScoreRepository(application)
+
     private val vibrator: Vibrator?
 
     private val _gameState = MutableStateFlow(GameState.MENU)
@@ -56,6 +64,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     val topScores: StateFlow<List<GameRecord>>
     val highestScore: StateFlow<Int?>
+
+    val currentUser: StateFlow<FirebaseUser?> = authManager.currentUser
+    val authError: StateFlow<String?> = authManager.authError
+
+    val globalLeaderboard: StateFlow<List<CloudLeaderboardEntry>> =
+        cloudRepository.observeGlobalLeaderboard()
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
     val gameEngine: GameEngine
 
@@ -116,6 +134,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _gameState.value = GameState.MENU
     }
 
+    fun signInWithGoogle(activityContext: Context) {
+        viewModelScope.launch {
+            authManager.signInWithGoogle(activityContext)
+        }
+    }
+
+    fun signOut() {
+        authManager.signOut()
+    }
+
+    fun clearAuthError() {
+        authManager.clearError()
+    }
+
     fun onJoystickMoved(x: Float, y: Float) {
         if (_gameState.value == GameState.PLAYING) {
             gameEngine.setPlayerDirection(x, y)
@@ -157,7 +189,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _lastMatchStats.value = match
         _gameState.value = GameState.GAME_OVER
 
-        // Persist match in Room
+        // 1. Persist match in local Room database
         viewModelScope.launch {
             repository.saveRecord(
                 GameRecord(
@@ -168,6 +200,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     skinName = _selectedSkin.value.nameEn
                 )
             )
+
+            // 2. Sync to Firebase Firestore if signed in
+            val user = authManager.currentUser.value
+            if (user != null) {
+                _isSyncing.value = true
+                val displayName = user.displayName?.takeIf { it.isNotBlank() } ?: "أفعى النيون"
+                cloudRepository.syncMatchResult(
+                    userId = user.uid,
+                    displayName = displayName,
+                    score = score,
+                    maxLength = length,
+                    kills = kills,
+                    survivalSeconds = survivalTime,
+                    skinName = _selectedSkin.value.nameEn
+                )
+                _isSyncing.value = false
+            }
         }
     }
 

@@ -47,6 +47,10 @@ fun NeonSerpentApp(
     val selectedSkin by viewModel.selectedSkin.collectAsState()
     val highestScore by viewModel.highestScore.collectAsState()
     val topScores by viewModel.topScores.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val globalLeaderboard by viewModel.globalLeaderboard.collectAsState()
+    val authError by viewModel.authError.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
 
     Crossfade(
         targetState = (gameState != GameState.MENU),
@@ -64,11 +68,24 @@ fun NeonSerpentApp(
                 selectedSkin = selectedSkin,
                 highestScore = highestScore,
                 topScores = topScores,
+                currentUser = currentUser,
+                globalLeaderboard = globalLeaderboard,
+                authError = authError,
+                isSyncing = isSyncing,
                 onSelectSkin = { skin ->
                     viewModel.selectSkin(skin)
                 },
                 onStartGame = {
                     viewModel.startGame()
+                },
+                onSignInWithGoogle = { activityContext ->
+                    viewModel.signInWithGoogle(activityContext)
+                },
+                onSignOut = {
+                    viewModel.signOut()
+                },
+                onClearError = {
+                    viewModel.clearAuthError()
                 }
             )
         }

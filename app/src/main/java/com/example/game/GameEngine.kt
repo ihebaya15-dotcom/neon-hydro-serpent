@@ -23,12 +23,14 @@ class GameEngine(
     val bubbleTrails = ArrayList<BubbleTrail>()
     val floatingNotices = ArrayList<FloatingNotice>()
     val neonSparks = ArrayList<NeonSpark>()
+    val bionicPlanktons = ArrayList<BionicPlankton>()
 
     var isGameOver = false
     var elapsedTime = 0f
 
     private var nextFoodId = 1L
     private var nextNoticeId = 1L
+    private var nextPlanktonId = 1L
 
     private val botNames = listOf(
         "أفعى المرجان", "شبح الأعماق", "الناشر الأزرق", "تنين البحار",
@@ -54,8 +56,14 @@ class GameEngine(
         bubbleTrails.clear()
         floatingNotices.clear()
         neonSparks.clear()
+        bionicPlanktons.clear()
 
         player = createPlayerSerpent(playerSkin)
+
+        // Spawn bionic planktons (power-ups)
+        for (i in 0 until 12) {
+            spawnBionicPlankton()
+        }
 
         // Spawn initial ambient foods
         for (i in 0 until 420) {
@@ -136,6 +144,19 @@ class GameEngine(
                 glowColor = color.copy(alpha = 0.65f),
                 energyValue = Random.nextFloat() * 2.5f + 1.2f,
                 isDeathOrb = false
+            )
+        )
+    }
+
+    private fun spawnBionicPlankton() {
+        val pos = randomPointInWorld()
+        val type = if (Random.nextBoolean()) BionicPlanktonType.SHIELD else BionicPlanktonType.SPEED_BOOST
+        bionicPlanktons.add(
+            BionicPlankton(
+                id = nextPlanktonId++,
+                position = pos,
+                type = type,
+                radius = 16f
             )
         )
     }
@@ -241,15 +262,25 @@ class GameEngine(
         // 6. Food Collisions (Head eating food)
         checkFoodCollisions()
 
-        // 7. Serpent-to-Serpent Collisions (Combat / Predation)
+        // 7. Bionic Plankton Power-ups (Shield, Speed Boost)
+        for (bp in bionicPlanktons) {
+            bp.pulsePhase += deltaTime * 3.5f
+            bp.rotationAngle += deltaTime * 1.8f
+        }
+        checkBionicPlanktonCollisions()
+        while (bionicPlanktons.size < 12) {
+            spawnBionicPlankton()
+        }
+
+        // 8. Serpent-to-Serpent Collisions (Combat / Predation)
         checkSerpentCollisions()
 
-        // 8. Maintain Food Population
+        // 9. Maintain Food Population
         while (foods.size < 400) {
             spawnRandomFood()
         }
 
-        // 9. Respawn dead bots away from player
+        // 10. Respawn dead bots away from player
         for (i in bots.indices) {
             val bot = bots[i]
             if (!bot.isAlive) {
@@ -318,6 +349,42 @@ class GameEngine(
         }
     }
 
+    private fun checkBionicPlanktonCollisions() {
+        val allSerpents = mutableListOf<Serpent>()
+        if (player.isAlive) allSerpents.add(player)
+        for (b in bots) if (b.isAlive) allSerpents.add(b)
+
+        val iterator = bionicPlanktons.iterator()
+        while (iterator.hasNext()) {
+            val bp = iterator.next()
+            for (serpent in allSerpents) {
+                val pickupRadius = serpent.bodyRadius * 1.5f + bp.radius
+                if (GameMath.distanceSquared(serpent.head, bp.position) <= pickupRadius * pickupRadius) {
+                    iterator.remove()
+                    when (bp.type) {
+                        BionicPlanktonType.SHIELD -> {
+                            serpent.shieldDuration = bp.type.baseDuration
+                            if (serpent.isPlayer) {
+                                addNotice("درع النيون الحركي! 🛡️ (10ث)", bp.position, bp.type.color)
+                                onPlayerKillStreak("درع الحماية نشط! 🛡️")
+                            }
+                        }
+                        BionicPlanktonType.SPEED_BOOST -> {
+                            serpent.speedBoostDuration = bp.type.baseDuration
+                            if (serpent.isPlayer) {
+                                addNotice("سرعة تيربو خارقة! ⚡ (8ث)", bp.position, bp.type.color)
+                                onPlayerKillStreak("سرعة خارقة نشطة! ⚡")
+                            }
+                        }
+                    }
+                    emitPreySparks(bp.position, bp.type.color, bp.type.glowColor, count = 22)
+                    serpent.score += 50
+                    break
+                }
+            }
+        }
+    }
+
     private fun checkSerpentCollisions() {
         val allSerpents = mutableListOf<Serpent>()
         if (player.isAlive) allSerpents.add(player)
@@ -329,7 +396,16 @@ class GameEngine(
             // World edge boundary collision
             val distToCenter = GameMath.distance(attacker.head, worldCenter)
             if (distToCenter >= worldRadius - 10f) {
-                killSerpent(attacker, null)
+                if (attacker.hasShield) {
+                    attacker.shieldDuration = 0f
+                    emitPreySparks(attacker.head, Color(0xFF00E5FF), Color.White, count = 22)
+                    if (attacker.isPlayer) {
+                        addNotice("الدرع امتص صدمة الحافة! 🛡️", attacker.head, Color(0xFF00E5FF))
+                    }
+                    attacker.targetAngle = GameMath.angleTo(attacker.head, worldCenter)
+                } else {
+                    killSerpent(attacker, null)
+                }
                 continue
             }
 
@@ -353,7 +429,23 @@ class GameEngine(
                 }
 
                 if (collided) {
-                    killSerpent(attacker, defender)
+                    if (attacker.hasShield) {
+                        // Shield absorbs impact and deflects
+                        attacker.shieldDuration = 0f
+                        emitPreySparks(attacker.head, Color(0xFF00E5FF), Color.White, count = 28)
+                        if (attacker.isPlayer) {
+                            addNotice("الدرع صد الضربة القاتلة! 🛡️💥", attacker.head, Color(0xFF00E5FF))
+                            onPlayerKillStreak("درع الحماية أنقذك من الاصطدام!")
+                        }
+                        // Deflect backwards
+                        attacker.head = Offset(
+                            attacker.head.x - cos(attacker.angle) * 35f,
+                            attacker.head.y - sin(attacker.angle) * 35f
+                        )
+                        attacker.targetAngle = GameMath.normalizeAngle(attacker.angle + kotlin.math.PI.toFloat())
+                    } else {
+                        killSerpent(attacker, defender)
+                    }
                     break
                 }
             }

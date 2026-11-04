@@ -17,7 +17,9 @@ data class Serpent(
     var isBoosting: Boolean = false,
     var isAlive: Boolean = true,
     var kills: Int = 0,
-    var score: Int = 0
+    var score: Int = 0,
+    var shieldDuration: Float = 0f,
+    var speedBoostDuration: Float = 0f
 ) {
     // Array of body segment positions from head to tail
     val segments = ArrayList<Offset>()
@@ -29,6 +31,12 @@ data class Serpent(
     var aiStateTimer: Float = 0f
     var aiTargetFood: FoodPellet? = null
     var aiPersonality: AiPersonality = AiPersonality.BALANCED
+
+    val hasShield: Boolean
+        get() = shieldDuration > 0f
+
+    val hasSpeedBoost: Boolean
+        get() = speedBoostDuration > 0f
 
     val segmentSpacing: Float
         get() = (14f + (mass / 300f).coerceAtMost(8f))
@@ -55,11 +63,26 @@ data class Serpent(
     fun updateMovement(deltaTime: Float, worldRadius: Float): FoodPellet? {
         if (!isAlive) return null
 
-        val currentSpeed = if (isBoosting && mass > 20f) 8.8f else 4.8f
+        // Decrement active power-up timers
+        if (shieldDuration > 0f) {
+            shieldDuration = (shieldDuration - deltaTime).coerceAtLeast(0f)
+        }
+        if (speedBoostDuration > 0f) {
+            speedBoostDuration = (speedBoostDuration - deltaTime).coerceAtLeast(0f)
+        }
+
+        val isHyperSpeed = speedBoostDuration > 0f
+        val isManualBoost = isBoosting && mass > 20f
+
+        val currentSpeed = when {
+            isHyperSpeed -> 10.5f
+            isManualBoost -> 8.8f
+            else -> 4.8f
+        }
         speed = currentSpeed
 
         // Turn towards targetAngle with smooth angular speed
-        val turnRate = if (isBoosting) 4.2f * deltaTime else 3.4f * deltaTime
+        val turnRate = if (isHyperSpeed || isManualBoost) 4.5f * deltaTime else 3.4f * deltaTime
         angle = GameMath.rotateTowards(angle, targetAngle, turnRate)
 
         // Move head forward
@@ -106,9 +129,9 @@ data class Serpent(
         // Update swimming wiggle
         wigglePhase += (speed * 0.08f)
 
-        // Handle boosting cost: shed mass as luminous food droplets
+        // Handle boosting cost: shed mass as luminous food droplets (only on manual boost, not free hyper-speed!)
         var shedFood: FoodPellet? = null
-        if (isBoosting && mass > 22f) {
+        if (!isHyperSpeed && isManualBoost && mass > 22f) {
             mass -= 2.0f * deltaTime
             boostShedTimer += deltaTime
             if (boostShedTimer >= 0.12f) {

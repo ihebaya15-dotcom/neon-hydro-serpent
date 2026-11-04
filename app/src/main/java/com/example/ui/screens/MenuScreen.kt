@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.Button
@@ -380,6 +381,24 @@ fun MenuScreen(
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "قاعدة الافتراس: اقطع طريق رؤوس الخصوم بجسدك لتنفجر إلى طاقة وتلتهمها!",
+                            fontSize = 12.sp,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFF00E5FF),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "عوالق البايونيك الخارقة: تمنحك درعاً 🛡️ يصد الاصطدامات القاتلة أو سرعة تيربو خارقة مجانية ⚡!",
                             fontSize = 12.sp,
                             color = TextPrimary
                         )

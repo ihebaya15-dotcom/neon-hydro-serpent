@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.game.BionicPlankton
 import com.example.game.LeaderboardEntry
 import com.example.game.Serpent
 import com.example.ui.theme.AbyssDark
@@ -46,6 +47,7 @@ fun MiniMap(
     modifier: Modifier = Modifier,
     player: Serpent,
     bots: List<Serpent>,
+    bionicPlanktons: List<BionicPlankton> = emptyList(),
     worldRadius: Float
 ) {
     val mapSize = 78.dp
@@ -98,6 +100,17 @@ fun MiniMap(
                 )
             }
 
+            // Draw Bionic Plankton power-ups blips
+            for (bp in bionicPlanktons) {
+                val rel = bp.position - worldCenter
+                val blipPos = Offset(center.x + rel.x * scale, center.y + rel.y * scale)
+                drawCircle(
+                    color = bp.type.color.copy(alpha = 0.9f),
+                    radius = 3.2f,
+                    center = blipPos
+                )
+            }
+
             // Draw Player blip (pulsing brighter cyan)
             if (player.isAlive) {
                 val rel = player.head - worldCenter
@@ -111,6 +124,61 @@ fun MiniMap(
                     color = Color.White,
                     radius = 2.8f,
                     center = playerBlip
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ActivePowerUpBadge(
+    modifier: Modifier = Modifier,
+    shieldDuration: Float,
+    speedBoostDuration: Float
+) {
+    if (shieldDuration <= 0f && speedBoostDuration <= 0f) return
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (shieldDuration > 0f) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF00E5FF).copy(alpha = 0.2f))
+                    .border(1.dp, Color(0xFF00E5FF), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "🛡️", fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "درع " + ((shieldDuration * 10).toInt() / 10f).toString() + "ث",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF00E5FF)
+                )
+            }
+        }
+
+        if (speedBoostDuration > 0f) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFFB800).copy(alpha = 0.2f))
+                    .border(1.dp, Color(0xFFFFB800), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "⚡", fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "تيربو " + ((speedBoostDuration * 10).toInt() / 10f).toString() + "ث",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFB800)
                 )
             }
         }

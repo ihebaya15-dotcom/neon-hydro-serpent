@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.R
+import com.example.ui.components.ActivePowerUpBadge
 import com.example.ui.components.GameCanvas
 import com.example.ui.components.LeaderboardCard
 import com.example.ui.components.MiniMap
@@ -124,12 +125,19 @@ fun GameScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Left: Player Live Stats
-                StatsBar(
-                    score = engine.player.score,
-                    length = engine.player.segments.size,
-                    kills = engine.player.kills
-                )
+                // Left: Player Live Stats + Active Power-up timer
+                Column {
+                    StatsBar(
+                        score = engine.player.score,
+                        length = engine.player.segments.size,
+                        kills = engine.player.kills
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    ActivePowerUpBadge(
+                        shieldDuration = engine.player.shieldDuration,
+                        speedBoostDuration = engine.player.speedBoostDuration
+                    )
+                }
 
                 // Right: Pause Button & Radar MiniMap
                 Row(
@@ -155,6 +163,7 @@ fun GameScreen(
                     MiniMap(
                         player = engine.player,
                         bots = engine.bots,
+                        bionicPlanktons = engine.bionicPlanktons,
                         worldRadius = engine.worldRadius
                     )
                 }

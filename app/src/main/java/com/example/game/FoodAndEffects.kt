@@ -51,3 +51,35 @@ data class NeonSpark(
     val maxLifetime: Float = 0.8f,
     var age: Float = 0f
 )
+
+enum class BionicPlanktonType(
+    val titleAr: String,
+    val titleEn: String,
+    val color: Color,
+    val glowColor: Color,
+    val baseDuration: Float
+) {
+    SHIELD(
+        titleAr = "درع النيون الحركي",
+        titleEn = "Kinetic Shield",
+        color = Color(0xFF00E5FF),
+        glowColor = Color(0x9900E5FF),
+        baseDuration = 10f
+    ),
+    SPEED_BOOST(
+        titleAr = "سرعة تيربو خارقة",
+        titleEn = "Hyper Velocity",
+        color = Color(0xFFFFB800),
+        glowColor = Color(0x99FFB800),
+        baseDuration = 8f
+    )
+}
+
+data class BionicPlankton(
+    val id: Long,
+    var position: Offset,
+    val type: BionicPlanktonType,
+    val radius: Float = 16f,
+    var pulsePhase: Float = Random.nextFloat() * 6.28f,
+    var rotationAngle: Float = Random.nextFloat() * 6.28f
+)

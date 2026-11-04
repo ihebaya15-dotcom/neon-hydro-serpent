@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import com.example.game.BionicPlanktonType
 import com.example.game.GameEngine
 import com.example.game.GameMath
 import com.example.game.Serpent
@@ -46,6 +47,14 @@ fun GameCanvas(
             color = android.graphics.Color.argb(200, 240, 240, 255)
             textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+    }
+
+    val iconPaint = remember {
+        Paint().apply {
+            textSize = 26f
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
@@ -219,6 +228,70 @@ fun GameCanvas(
             }
         }
 
+        // 6b. Draw Bionic Plankton Power-ups (Shield, Speed Boost)
+        for (bp in engine.bionicPlanktons) {
+            val sPos = worldToScreen(bp.position)
+            if (isVisible(sPos, 60f)) {
+                val pulse = (sin(bp.pulsePhase) + 1f) * 0.5f
+                val baseR = bp.radius * zoom
+                val glowR = baseR * (1.8f + pulse * 0.5f)
+
+                // Outer soft glowing aura
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            bp.type.glowColor.copy(alpha = 0.7f),
+                            bp.type.glowColor.copy(alpha = 0.2f),
+                            Color.Transparent
+                        ),
+                        center = sPos,
+                        radius = glowR
+                    ),
+                    radius = glowR,
+                    center = sPos
+                )
+
+                // Rotating Orbital Rings / Tech Brackets
+                val rot = bp.rotationAngle
+                val bracketRadius = baseR * 1.35f
+                for (a in 0 until 4) {
+                    val angleOffset = rot + (a * (kotlin.math.PI.toFloat() / 2f))
+                    val deg = Math.toDegrees(angleOffset.toDouble()).toFloat()
+                    drawArc(
+                        color = bp.type.color,
+                        startAngle = deg,
+                        sweepAngle = 45f,
+                        useCenter = false,
+                        topLeft = Offset(sPos.x - bracketRadius, sPos.y - bracketRadius),
+                        size = Size(bracketRadius * 2f, bracketRadius * 2f),
+                        style = Stroke(width = 2.5f * zoom)
+                    )
+                }
+
+                // Inner glowing power-up core
+                drawCircle(
+                    color = bp.type.color,
+                    radius = baseR,
+                    center = sPos
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.85f),
+                    radius = baseR * 0.55f,
+                    center = sPos
+                )
+
+                // Symbol text (Shield 🛡 or Bolt ⚡)
+                val symbol = if (bp.type == BionicPlanktonType.SHIELD) "🛡" else "⚡"
+                iconPaint.textSize = (18f * zoom).coerceAtLeast(14f)
+                drawContext.canvas.nativeCanvas.drawText(
+                    symbol,
+                    sPos.x,
+                    sPos.y + (iconPaint.textSize * 0.35f),
+                    iconPaint
+                )
+            }
+        }
+
         // 7. Draw Serpents (Bots first, then Player on top)
         for (bot in engine.bots) {
             if (bot.isAlive) {
@@ -351,8 +424,50 @@ private fun DrawScope.drawSerpent(
             center = Offset(rightEyePos.x + cos(angle) * (eyeRadius * 0.35f), rightEyePos.y + sin(angle) * (eyeRadius * 0.35f))
         )
 
+        // Active Power-up Visual Auras around head
+        if (serpent.hasShield) {
+            val shieldRadius = headRadius * 2.3f
+            // Translucent glowing shield bubble
+            drawCircle(
+                color = Color(0x3300E5FF),
+                radius = shieldRadius,
+                center = headScreenPos
+            )
+            // Vibrant kinetic perimeter
+            drawCircle(
+                color = Color(0xFF00E5FF),
+                radius = shieldRadius,
+                center = headScreenPos,
+                style = Stroke(width = 3.5f * zoom)
+            )
+            // Outer pulse wave
+            val pulseWave = (sin(serpent.shieldDuration * 6f) + 1f) * 0.5f
+            drawCircle(
+                color = Color(0x6600E5FF),
+                radius = shieldRadius + (pulseWave * 8f * zoom),
+                center = headScreenPos,
+                style = Stroke(width = 1.5f * zoom)
+            )
+        }
+
+        if (serpent.hasSpeedBoost) {
+            val speedAuraRadius = headRadius * 1.8f
+            // Fiery electric amber aura
+            drawCircle(
+                color = Color(0x44FFB800),
+                radius = speedAuraRadius,
+                center = headScreenPos
+            )
+            drawCircle(
+                color = Color(0xFFFFB800),
+                radius = speedAuraRadius,
+                center = headScreenPos,
+                style = Stroke(width = 2.5f * zoom)
+            )
+        }
+
         // Serpent Name Label above head
-        val nameOffset = Offset(headScreenPos.x, headScreenPos.y - (headRadius * 1.7f))
+        val nameOffset = Offset(headScreenPos.x, headScreenPos.y - (headRadius * (if (serpent.hasShield) 2.6f else 1.7f)))
         drawContext.canvas.nativeCanvas.drawText(
             serpent.name,
             nameOffset.x,

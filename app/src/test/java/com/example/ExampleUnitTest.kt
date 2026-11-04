@@ -52,4 +52,23 @@ class ExampleUnitTest {
         }
         assertTrue("Sparks should be generated during movement/boost", engine.neonSparks.isNotEmpty())
     }
+
+    @Test
+    fun test_bionic_plankton_powerups() {
+        val engine = GameEngine(worldRadius = 1200f)
+        assertTrue("Bionic planktons should spawn", engine.bionicPlanktons.isNotEmpty())
+
+        // Test shield mechanics
+        engine.player.shieldDuration = 10f
+        assertTrue(engine.player.hasShield)
+
+        // Test speed boost mechanics
+        engine.player.speedBoostDuration = 8f
+        assertTrue(engine.player.hasSpeedBoost)
+
+        engine.update(0.1f)
+        assertTrue(engine.player.shieldDuration < 10f)
+        assertTrue(engine.player.speedBoostDuration < 8f)
+        assertEquals(10.5f, engine.player.speed, 0.01f)
+    }
 }

@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Neon Serpent</string>
+    <string name="play_now">انطلق في الأعماق</string>
+    <string name="high_scores">أفضل الأرقام</string>
+    <string name="select_skin">مظهر النيون</string>
+    <string name="game_over">سقط الثعبان في الأعماق!</string>
+    <string name="score_label">النقاط</string>
+    <string name="length_label">الطول</string>
+    <string name="kills_label">الافتراس</string>
+    <string name="restart">إعادة المحاولة</string>
+    <string name="back_to_menu">القائمة الرئيسية</string>
+    <string name="boost">اندفاع تيربو</string>
+    <string name="leaderboard_title">المتصدرون</string>
+</resources>

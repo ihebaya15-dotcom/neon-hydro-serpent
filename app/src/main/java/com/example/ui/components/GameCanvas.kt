@@ -135,6 +135,32 @@ fun GameCanvas(
             }
         }
 
+        // 4b. Draw Bioluminescent Neon Sparks (Movement wakes & Prey consumption bursts)
+        for (spark in engine.neonSparks) {
+            val sPos = worldToScreen(spark.position)
+            if (isVisible(sPos, 25f)) {
+                val sparkR = spark.radius * zoom
+                // Outer soft glow
+                drawCircle(
+                    color = spark.glowColor.copy(alpha = spark.alpha * 0.5f),
+                    radius = sparkR * 2.2f,
+                    center = sPos
+                )
+                // Inner intense color core
+                drawCircle(
+                    color = spark.color.copy(alpha = spark.alpha),
+                    radius = sparkR,
+                    center = sPos
+                )
+                // Hotspot white center
+                drawCircle(
+                    color = Color.White.copy(alpha = spark.alpha * 0.85f),
+                    radius = sparkR * 0.4f,
+                    center = sPos
+                )
+            }
+        }
+
         // 5. Draw Circular Arena Boundary (Electrified Neon Barrier)
         val screenWorldCenter = worldToScreen(engine.worldCenter)
         val screenWorldRadius = engine.worldRadius * zoom

@@ -40,3 +40,14 @@ data class FloatingNotice(
     var alpha: Float = 1.0f,
     var lifetime: Float = 1.5f
 )
+
+data class NeonSpark(
+    var position: Offset,
+    var velocity: Offset,
+    var radius: Float,
+    val color: Color,
+    val glowColor: Color,
+    var alpha: Float = 1.0f,
+    val maxLifetime: Float = 0.8f,
+    var age: Float = 0f
+)

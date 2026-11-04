@@ -42,4 +42,14 @@ class ExampleUnitTest {
         assertTrue(engine.player.isAlive)
         assertTrue(engine.player.segments.isNotEmpty())
     }
+
+    @Test
+    fun test_neon_sparks_particle_system() {
+        val engine = GameEngine(worldRadius = 1200f)
+        engine.setPlayerBoosting(true)
+        for (i in 0 until 10) {
+            engine.update(0.016f)
+        }
+        assertTrue("Sparks should be generated during movement/boost", engine.neonSparks.isNotEmpty())
+    }
 }

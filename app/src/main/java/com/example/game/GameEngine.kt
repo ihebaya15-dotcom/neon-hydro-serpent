@@ -22,6 +22,7 @@ class GameEngine(
     val waterParticles = ArrayList<WaterParticle>()
     val bubbleTrails = ArrayList<BubbleTrail>()
     val floatingNotices = ArrayList<FloatingNotice>()
+    val neonSparks = ArrayList<NeonSpark>()
 
     var isGameOver = false
     var elapsedTime = 0f
@@ -52,6 +53,7 @@ class GameEngine(
         waterParticles.clear()
         bubbleTrails.clear()
         floatingNotices.clear()
+        neonSparks.clear()
 
         player = createPlayerSerpent(playerSkin)
 
@@ -161,6 +163,7 @@ class GameEngine(
                 foods.add(shedFood)
                 addBubbleTrail(shedFood.position, player.skin.glowColor)
             }
+            emitMovementSparks(player, deltaTime)
         }
 
         // 2. Update Bots AI & Movement
@@ -174,6 +177,7 @@ class GameEngine(
                         addBubbleTrail(shedFood.position, bot.skin.glowColor)
                     }
                 }
+                emitMovementSparks(bot, deltaTime)
             }
         }
 
@@ -201,7 +205,28 @@ class GameEngine(
             }
         }
 
-        // 5. Update Floating Notices
+        // 5. Update Neon Sparks Particles
+        val sparkIterator = neonSparks.iterator()
+        while (sparkIterator.hasNext()) {
+            val spark = sparkIterator.next()
+            spark.age += deltaTime
+            if (spark.age >= spark.maxLifetime) {
+                sparkIterator.remove()
+                continue
+            }
+            val progress = (spark.age / spark.maxLifetime).coerceIn(0f, 1f)
+            spark.alpha = (1.0f - progress).coerceIn(0f, 1f)
+            spark.position = Offset(
+                spark.position.x + spark.velocity.x * deltaTime,
+                spark.position.y + spark.velocity.y * deltaTime
+            )
+            spark.velocity = Offset(
+                spark.velocity.x * 0.94f,
+                spark.velocity.y * 0.94f
+            )
+        }
+
+        // 6. Update Floating Notices
         val noticeIterator = floatingNotices.iterator()
         while (noticeIterator.hasNext()) {
             val notice = noticeIterator.next()
@@ -286,6 +311,7 @@ class GameEngine(
                             addNotice("+${(food.energyValue * 10).toInt()} طاقة نيون!", food.position, food.color)
                         }
                     }
+                    emitPreySparks(food.position, food.color, food.glowColor, if (food.isDeathOrb) 14 else 6)
                     break
                 }
             }
@@ -361,6 +387,9 @@ class GameEngine(
             )
         }
 
+        // Emit dramatic bioluminescent kill burst sparks across the serpent's body
+        emitKillBurst(victim)
+
         if (killer != null) {
             killer.kills++
             killer.score += (victim.mass * 12).toInt()
@@ -375,6 +404,59 @@ class GameEngine(
         if (victim.isPlayer) {
             isGameOver = true
             onPlayerKilled(victim)
+        }
+    }
+
+    private fun emitMovementSparks(serpent: Serpent, deltaTime: Float) {
+        if (neonSparks.size >= 280) return
+        val emissionChance = if (serpent.isBoosting) 0.70f else 0.25f
+        if (Random.nextFloat() < emissionChance) {
+            val segments = serpent.segments
+            if (segments.isNotEmpty()) {
+                val segIdx = (segments.size - 1 - Random.nextInt(minOf(5, segments.size))).coerceAtLeast(0)
+                val segPos = segments[segIdx]
+                val backwardAngle = serpent.angle + kotlin.math.PI.toFloat() + (Random.nextFloat() - 0.5f) * 1.4f
+                val sparkSpeed = if (serpent.isBoosting) Random.nextFloat() * 55f + 30f else Random.nextFloat() * 25f + 12f
+                neonSparks.add(
+                    NeonSpark(
+                        position = Offset(
+                            segPos.x + (Random.nextFloat() - 0.5f) * (serpent.bodyRadius * 0.9f),
+                            segPos.y + (Random.nextFloat() - 0.5f) * (serpent.bodyRadius * 0.9f)
+                        ),
+                        velocity = Offset(cos(backwardAngle) * sparkSpeed, sin(backwardAngle) * sparkSpeed),
+                        radius = Random.nextFloat() * 3.0f + 1.8f,
+                        color = if (Random.nextBoolean()) serpent.skin.primaryColor else serpent.skin.secondaryColor,
+                        glowColor = serpent.skin.glowColor,
+                        maxLifetime = if (serpent.isBoosting) 0.85f else 0.65f
+                    )
+                )
+            }
+        }
+    }
+
+    private fun emitPreySparks(pos: Offset, color: Color, glowColor: Color, count: Int = 8) {
+        val availableSlots = (290 - neonSparks.size).coerceAtLeast(0)
+        val spawnCount = minOf(count, availableSlots)
+        for (i in 0 until spawnCount) {
+            val angle = Random.nextFloat() * GameMath.TWO_PI
+            val speed = Random.nextFloat() * 90f + 35f
+            neonSparks.add(
+                NeonSpark(
+                    position = pos,
+                    velocity = Offset(cos(angle) * speed, sin(angle) * speed),
+                    radius = Random.nextFloat() * 3.5f + 2.2f,
+                    color = color,
+                    glowColor = glowColor,
+                    maxLifetime = Random.nextFloat() * 0.45f + 0.35f
+                )
+            )
+        }
+    }
+
+    private fun emitKillBurst(victim: Serpent) {
+        for (i in 0 until victim.segments.size step 2) {
+            val seg = victim.segments[i]
+            emitPreySparks(seg, victim.skin.primaryColor, victim.skin.glowColor, count = 5)
         }
     }
 
